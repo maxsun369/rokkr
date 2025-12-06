@@ -5,8 +5,8 @@
 
 extern Drive chassis;
 
-inline pros::MotorGroup intake({-1, 3});
-inline pros::MotorGroup score({-2, 10});
+inline pros::MotorGroup intake({-10, 3});
+inline pros::MotorGroup score({-2});
 inline ez::Piston descore('A');
 inline ez::Piston dex('B');
 inline ez::Piston middle('D');

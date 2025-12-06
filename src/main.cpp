@@ -152,6 +152,7 @@ void opcontrol() {
     }
     else if (master.get_digital(DIGITAL_Y)) {
       intake.move(127);
+      score.move(40);
     }
 
     else {
