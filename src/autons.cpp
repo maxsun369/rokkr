@@ -1,18 +1,8 @@
 #include "main.h"
-
-/////
-// For installation, upgrading, documentations, and tutorials, check out our website!
-// https://ez-robotics.github.io/EZ-Template/
-/////
-
-// These are out of 127
 const int DRIVE_SPEED = 110;
 const int TURN_SPEED = 90;
 const int SWING_SPEED = 110;
 
-///
-// Constants
-///
 void default_constants() {
   // P, I, D, and Start I
   chassis.pid_drive_constants_set(20.0, 0.0, 100.0);         // Fwd/rev constants, used for odom and non odom motions
@@ -53,141 +43,69 @@ void default_constants() {
 }
 
 void rightauton() {
-chassis.pid_drive_set(8.5_in, 80, true);
-chassis.pid_wait_quick_chain();
 
-chassis.pid_turn_set(55_deg, 80);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_drive_set(19_in, 25, true);
-intake.move(-127);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_turn_set(135_deg, 80);
-chassis.pid_wait_quick_chain(); 
-
-chassis.pid_drive_set(21_in, 70, true);
-intake.move(0);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_turn_set(180_deg, 80);
-dex.set(true);
-chassis.pid_wait_quick_chain();
-
-
-chassis.pid_drive_set(-8_in, 70, true);
-chassis.pid_wait_quick_chain();
-
-intake.move(-127);
-score.move(-127);
-pros::delay(1750);
-score.move(0);
-
-chassis.pid_drive_set(25_in, 80, true);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_drive_set(5_in, 20, true);
-chassis.pid_wait_quick_chain();
-
-pros::delay(650);
-intake.move(0);
-
-chassis.pid_drive_set(-7_in, 50, true);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_turn_set(-45_deg, 80, ez::cw);
-chassis.pid_wait_quick_chain();
-
-dex.set(false);
-
-chassis.pid_drive_set(47_in, 80, true);
-chassis.pid_wait_quick_chain();
-
-intake.move(127);
-score.move(127);
-pros::delay(800);
-
-chassis.pid_drive_set(-24_in, 80, true);
-intake.move(0);
-score.move(0);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_turn_set(0_deg, 80);
-chassis.pid_wait_quick_chain();
-
-chassis.pid_drive_set(18_in, 100, true);
-chassis.pid_wait();
-
-chassis.pid_turn_set(-50_deg, 100);
-chassis.pid_wait_quick_chain();
 }
 
 void leftauton() {
-  chassis.pid_drive_set(8.5_in, 80, true);
-  chassis.pid_wait_quick_chain();
+ 
+}
 
-  chassis.pid_turn_set(-55_deg, 80);   // MIRRORED
-  chassis.pid_wait_quick_chain();
+void wait_until_change_speed() {
+  // pid_wait_until will wait until the robot gets to a desired position
 
-  chassis.pid_drive_set(19_in, 25, true);
-  intake.move(-127);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(-135_deg, 80);  // MIRRORED
-  chassis.pid_wait_quick_chain(); 
-
-  chassis.pid_drive_set(21_in, 70, true);
-  intake.move(0);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(180_deg, 80);   // same (backwards)
-  dex.set(true);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(-8_in, 70, true);
-  chassis.pid_wait_quick_chain();
-
-  intake.move(-127);
-  score.move(-127);
-  pros::delay(1750);
-  score.move(0);
-
-  chassis.pid_drive_set(25_in, 80, true);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(5_in, 20, true);
-  chassis.pid_wait_quick_chain();
-
-  pros::delay(650);
-  intake.move(0);
-
-  chassis.pid_drive_set(-7_in, 50, true);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(-135_deg, 80);   // MIRRORED (was -45)
-  chassis.pid_wait_quick_chain();
-
-  dex.set(false);
-
-  chassis.pid_drive_set(-50_in, 80, true);
-  chassis.pid_wait_quick_chain();
-
-  intake.move(-127);
-  middle.set(true);
-  pros::delay(800);
-
-  chassis.pid_drive_set(27_in, 80, true);
-  intake.move(0);
-  middle.set(false);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(180_deg, 80);  // same direction for facing forward
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(-18_in, 100, true);
+  // When the robot gets to 6 inches slowly, the robot will travel the remaining distance at full speed
+  chassis.pid_drive_set(24_in, 30, true);
+  chassis.pid_wait_until(6_in);
+  chassis.pid_speed_max_set(DRIVE_SPEED);  // After driving 6 inches at 30 speed, the robot will go the remaining distance at DRIVE_SPEED
   chassis.pid_wait();
 
-  chassis.pid_turn_set(-130_deg, 100);  // MIRRORED (was -50)
-  chassis.pid_wait_quick_chain();
+  chassis.pid_turn_set(45_deg, TURN_SPEED);
+  chassis.pid_wait();
+
+  chassis.pid_turn_set(-45_deg, TURN_SPEED);
+  chassis.pid_wait();
+
+  chassis.pid_turn_set(0_deg, TURN_SPEED);
+  chassis.pid_wait();
+
+  // When the robot gets to -6 inches slowly, the robot will travel the remaining distance at full speed
+  chassis.pid_drive_set(-24_in, 30, true);
+  chassis.pid_wait_until(-6_in);
+  chassis.pid_speed_max_set(DRIVE_SPEED);  // After driving 6 inches at 30 speed, the robot will go the remaining distance at DRIVE_SPEED
+  chassis.pid_wait();
+}
+void tug(int attempts) {
+  for (int i = 0; i < attempts - 1; i++) {
+    // Attempt to drive backward
+    printf("i - %i", i);
+    chassis.pid_drive_set(-12_in, 127);
+    chassis.pid_wait();
+
+    // If failsafed...
+    if (chassis.interfered) {
+      chassis.drive_sensor_reset();
+      chassis.pid_drive_set(-2_in, 20);
+      pros::delay(1000);
+    }
+    // If the robot successfully drove back, return
+    else {
+      return;
+    }
+  }
+}
+
+// If there is no interference, the robot will drive forward and turn 90 degrees.
+// If interfered, the robot will drive forward and then attempt to drive backward.
+void interfered_example() {
+  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
+  chassis.pid_wait();
+
+  if (chassis.interfered) {
+    tug(3);
+    return;
+  }
+
+  chassis.pid_turn_set(90_deg, TURN_SPEED);
+  chassis.pid_wait();
 }
 
