@@ -43,6 +43,46 @@ void default_constants() {
 }
 
 void rightauton() {
+chassis.pid_drive_set(8_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(50_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+intake.move(127);
+chassis.pid_drive_set(10_in, 50);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(25_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_swing_set(ez::LEFT_SWING, 85_deg, 80);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(5_in, 50);
+dex.set(true);
+chassis.pid_wait_quick_chain();
+chassis.pid_swing_set(ez::LEFT_SWING, 0_deg, 90, 30);
+
+chassis.pid_wait_quick_chain();
+
+chassis.pid_turn_set(0_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(-20_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+
+chassis.pid_turn_set(270_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(-6_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(180_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(-6_in, DRIVE_SPEED);
+score.move(127);
+intake.move(127);
+pros::delay(2000);
+score.move(0);
+intake.move(0);
+dex.set(false);
+
+
+
+
 
 }
 

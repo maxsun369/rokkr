@@ -1,5 +1,9 @@
 #include "main.h"
 
+#include <cmath>
+
+pros::Optical optical(9);
+
 const int JOYSTICK_DEADBAND = 10;  // you can tweak this
 
 int applyDeadband(int input) {
@@ -12,7 +16,7 @@ int applyDeadband(int input) {
 ez::Drive chassis(
     {-11, -12, 13},   // Left Chassis Ports  
     {20, 19, -18},    // Right Chassis Ports
-    5,      // IMU Port
+    4,      // IMU Port
     2.75,   // Wheel Diameter
     450     // Wheel RPM = cartridge * (motor gear / wheel gear)
 );
@@ -20,6 +24,7 @@ ez::Drive chassis(
 void initialize() {
   pros::delay(500);  
 
+    optical.set_led_pwm(100);
   // Configure chassis controls
   chassis.opcontrol_curve_buttons_toggle(false);   // Curve buttons on controller
   chassis.opcontrol_drive_activebrake_set(0);   // Active brake kP (0 disables)
@@ -36,10 +41,12 @@ void initialize() {
       pros::E_CONTROLLER_DIGITAL_Y,
       pros::E_CONTROLLER_DIGITAL_A
   );
+  
 
   ez::as::auton_selector.autons_add({
+    {"Right Auton\n\n9 right side", rightauton},
     {"Left Auton\n\nLeft side", leftauton},
-    {"Right Auton\n\nRight side", rightauton},
+    
   });
 
   
@@ -92,6 +99,42 @@ void ez_template_extras() {
   }
   // If connected to field, you could disable tuner here if desired.
 }
+// true = we are keeping RED balls, ejecting BLUE
+const bool KEEP_RED = true;
+
+int color_sort_adjust(int manualPower) {
+  // If you're not moving the intake, don't do anything
+  if (manualPower == 0) return manualPower;
+
+  int prox = optical.get_proximity();   // 0–255, higher = closer
+  if (prox < 50) {
+    // Nothing close -> don't change anything
+    return manualPower;
+  }
+
+  double hue = optical.get_hue();  // 0–360
+
+  bool isRed  = (hue < 30) || (hue > 330);
+  bool isBlue = (hue > 180 && hue < 260);
+
+  // We only care when you're trying to take a ball IN (manualPower > 0)
+  if (manualPower > 0) {
+    if (KEEP_RED) {
+      // We want RED. If we see BLUE, override to spit it out.
+      if (isBlue) {
+        return -127;  // Eject wrong color
+      }
+    } else {
+      // We want BLUE. If we see RED, override to spit it out.
+      if (isRed) {
+        return 127;
+      }
+    }
+  }
+
+  // Otherwise, keep your command
+  return manualPower;
+}
 
 void opcontrol() {
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);         
@@ -134,33 +177,42 @@ void opcontrol() {
 
     chassis.drive_set(left, right);
 
-    // =====================
-    // Intake / scoring controls
-    // =====================
+      // 🤖 No ball close → normal driver controls
+    int manualIntake = 0;
+    int manualScore  = 0;
 
-    if (master.get_digital(DIGITAL_R1)) {
-      intake.move(127);
-      score.move(127);
+    // Your normal controls decide what you WANT the intake to do
+    if (master.get_digital(DIGITAL_RIGHT)) {
+      manualIntake = 127;    // intake forward
+      manualScore  = -127;
     } 
-    else if (master.get_digital(DIGITAL_R2)) {
-      intake.move(-127);
-      score.move(-127);
-    } 
-    else if (master.get_digital(DIGITAL_RIGHT)) {
-      intake.move(127);
-      score.move(-127);
-    }
     else if (master.get_digital(DIGITAL_Y)) {
-      intake.move(127);
-      score.move(40);
+      manualIntake = 127;   // intake backward
+      manualScore  = 0;
+    } 
+    else if (master.get_digital(DIGITAL_R1)) {
+      manualIntake = 127;    // intake + score forward
+      manualScore  = 127;
+    }
+    else if (master.get_digital(DIGITAL_R2)) {
+      manualIntake = -127;   // intake + score backward
+      manualScore  = -127;
     }
 
-    else {
-      score.move(0);
-      intake.move(0);
+    // Let the color sorter MODIFY the intake only if wrong color is present
+    int finalScore = color_sort_adjust(manualScore);
+
+
+    // DEBUG: rumble when sorter overrides your command
+    if (finalScore != manualScore) {
+      master.rumble(".");
     }
 
-    descore.button_toggle(master.get_digital(DIGITAL_LEFT));
+    // Apply final powers
+    intake.move(manualIntake);
+    score.move(finalScore);
+
+    descore.button_toggle(master.get_digital(DIGITAL_L1));
     dex.button_toggle(master.get_digital(DIGITAL_UP));
     middle.set(master.get_digital(DIGITAL_R2));
 
