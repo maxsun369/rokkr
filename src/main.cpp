@@ -57,12 +57,12 @@ void initialize() {
   
 
   ez::as::auton_selector.autons_add({
-    {"RED SOLO AWP\n\nROJO SOLO AWP", redsoloawp},
-    {"RED LEFT\n\nROJO IZQUIERDA", redleftauton},
-    {"FAST BLUE RIGHT\n\nRAPIDO AZUL DERECHA", fastbluerightauton},
     {"FAST RED RIGHT Auton\n\nRAPIDO ROJO DERECHA", fastredrightauton},
+    {"FAST BLUE RIGHT\n\nRAPIDO AZUL DERECHA", fastbluerightauton},
+    {"RED LEFT\n\nROJO IZQUIERDA", redleftauton},
     {"BLUE LEFT\n\n AZUL IZQUIERDA", blueleftauton},
     {"BLUE SOLO AWP\n\nAZUL SOLO AWP", bluesoloawp},
+    {"RED SOLO AWP\n\nROJO SOLO AWP", redsoloawp},
   });
 
   chassis.initialize();

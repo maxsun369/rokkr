@@ -240,15 +240,6 @@ chassis.pid_turn_set(140_deg, 30);
 chassis.pid_wait_quick_chain();
 }
 
-void bluerightauton() {
-keepRed = false;
- 
-}
-void redrightauton() {
-keepRed = true;
-}
-
-
 void blueleftauton() {
 keepRed = false;
 chassis.pid_drive_set(5_in, DRIVE_SPEED);
@@ -296,8 +287,72 @@ chassis.pid_wait_quick_chain();
 }
 
 void bluesoloawp() {
-  keepRed = false;
+keepRed = false;
+chassis.pid_drive_set(5_in, DRIVE_SPEED);
+intake.move(127);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(20_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(11.4_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(270_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(20_in, 60);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(225_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(20_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(180_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(-8_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+score_auto(127, 127, 1300);
+chassis.pid_drive_set(5_in, DRIVE_SPEED);
+intake.move(-127);
+score.move(127);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(77_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+intake.move(127);
+chassis.pid_drive_set(65_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+score.move(0);
+chassis.pid_drive_set(10_in, 57);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(-1.3_in, 60);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(315_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+chassis.pid_drive_set(9_in, DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+score_auto(-127,-127, 1250);
+intake.move(-127);
+chassis.pid_drive_set(-41.5_in, DRIVE_SPEED);
+pros::delay(500);
+dex.set(true);
+chassis.pid_wait_quick_chain();
+chassis.pid_turn_set(180_deg, TURN_SPEED);
+chassis.pid_wait_quick_chain();
+intake.move(127);
+chassis.pid_drive_set(12.5_in, 75);
+chassis.pid_wait_quick_chain();
+score_auto(127, 0, 700);
+intake.move(127);
+chassis.pid_drive_set(-27_in,DRIVE_SPEED);
+chassis.pid_wait_quick_chain();
+score_auto(127,127, 2000);
 }
+
+void bluerightauton() {
+keepRed = false;
+ 
+}
+void redrightauton() {
+keepRed = true;
+}
+
+
 
 
 
