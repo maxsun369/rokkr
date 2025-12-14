@@ -42,28 +42,6 @@ void default_constants() {
   chassis.slew_swing_constants_set(5_deg, 50);
 }
 
-void redrightauton() {
-keepRed = true;
-chassis.pid_drive_set(5_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(340_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(21_in,60);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-2.5_in,60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(315_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(-67,0, 1500);
-chassis.pid_drive_set(-50_in,DRIVE_SPEED);
-}
 
 void fastredrightauton() {
 keepRed = true;
@@ -180,27 +158,27 @@ chassis.pid_wait_quick_chain();
 chassis.pid_drive_set(-8_in, DRIVE_SPEED);
 chassis.pid_wait_quick_chain();
 score_auto(127, 127, 1300);
-intake.move(127);
-score.move(127);
 chassis.pid_drive_set(5_in, DRIVE_SPEED);
+intake.move(-127);
+score.move(127);
 chassis.pid_wait_quick_chain();
 chassis.pid_turn_set(77_deg, TURN_SPEED);
 chassis.pid_wait_quick_chain();
+intake.move(127);
 chassis.pid_drive_set(65_in, DRIVE_SPEED);
 chassis.pid_wait_quick_chain();
 score.move(0);
 chassis.pid_drive_set(10_in, 57);
 chassis.pid_wait_quick_chain();
 chassis.pid_drive_set(-1.3_in, 60);
-score_auto(127,127, 350);
-intake.move(127);
 chassis.pid_wait_quick_chain();
 chassis.pid_turn_set(315_deg, TURN_SPEED);
 chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(13.5_in, DRIVE_SPEED);
-score_auto(-50,-50, 1500);
+chassis.pid_drive_set(9_in, DRIVE_SPEED);
 chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-44.5_in, DRIVE_SPEED);
+score_auto(-127,-127, 1250);
+intake.move(-127);
+chassis.pid_drive_set(-41.5_in, DRIVE_SPEED);
 pros::delay(500);
 dex.set(true);
 chassis.pid_wait_quick_chain();
@@ -213,7 +191,7 @@ score_auto(127, 0, 700);
 intake.move(127);
 chassis.pid_drive_set(-27_in,DRIVE_SPEED);
 chassis.pid_wait_quick_chain();
-score_auto(127,127, 1350);
+score_auto(127,127, 2000);
 }
 
 void fastbluerightauton() {
@@ -265,6 +243,9 @@ chassis.pid_wait_quick_chain();
 void bluerightauton() {
 keepRed = false;
  
+}
+void redrightauton() {
+keepRed = true;
 }
 
 
