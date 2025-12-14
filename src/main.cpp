@@ -1,9 +1,9 @@
 #include "main.h"
-
 #include <cmath>
+bool keepRed = true;  
+void score_auto(int intakePower, int scorePower, int timeMs);
 
 pros::Optical optical(9);
-
 const int JOYSTICK_DEADBAND = 10;  // you can tweak this
 
 int applyDeadband(int input) {
@@ -11,6 +11,19 @@ int applyDeadband(int input) {
     return 0;
   }
   return input;
+}
+
+int applyCurve(int input) {
+  // input: -127..127
+  double x = input / 127.0;          // -1..1
+  double a = 0.6;                    // curve strength (0 = straight, 1 = very curvy)
+  double y = a * x * x * x + (1 - a) * x;  // cubic mix
+
+  int out = static_cast<int>(y * 127.0);
+  // safety clamp
+  if (out > 127) out = 127;
+  if (out < -127) out = -127;
+  return out;
 }
 
 ez::Drive chassis(
@@ -23,15 +36,15 @@ ez::Drive chassis(
 
 void initialize() {
   pros::delay(500);  
-
-    optical.set_led_pwm(100);
+  optical.set_led_pwm(100);
   // Configure chassis controls
   chassis.opcontrol_curve_buttons_toggle(false);   // Curve buttons on controller
   chassis.opcontrol_drive_activebrake_set(0);   // Active brake kP (0 disables)
   chassis.opcontrol_curve_default_set(4.5,0);       // Default curve settings
+ 
+
 
   default_constants();
-
   // Left/right curve button bindings (optional)
   chassis.opcontrol_curve_buttons_left_set(
       pros::E_CONTROLLER_DIGITAL_LEFT,
@@ -44,29 +57,44 @@ void initialize() {
   
 
   ez::as::auton_selector.autons_add({
-    {"Right Auton\n\n9 right side", rightauton},
-    {"Left Auton\n\nLeft side", leftauton},
-    
+    {"RED SOLO AWP\n\nROJO SOLO AWP", redsoloawp},
+    {"RED LEFT\n\nROJO IZQUIERDA", redleftauton},
+    {"FAST BLUE RIGHT\n\nRAPIDO AZUL DERECHA", fastbluerightauton},
+    {"FAST RED RIGHT Auton\n\nRAPIDO ROJO DERECHA", fastredrightauton},
+    {"BLUE LEFT\n\n AZUL IZQUIERDA", blueleftauton},
+    {"BLUE SOLO AWP\n\nAZUL SOLO AWP", bluesoloawp},
   });
 
-  
   chassis.initialize();
   ez::as::initialize();
-
-
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
-
   // Make sure PID tuner is off
   if (chassis.pid_tuner_enabled())
     chassis.pid_tuner_disable();
 }
 
 void disabled() {
-  // Optional: things to do while disabled
 }
 
 void competition_initialize() {
   // Optional: pre-auton stuff (e.g. side selector on screen)
+}
+
+void score_auto(int intakePower, int scorePower, int timeMs) {
+    int start = pros::millis();
+    while (pros::millis() - start < timeMs) {
+
+        int sortedScore = color_sort_adjust(scorePower);
+
+        intake.move(intakePower);
+        score.move(sortedScore);
+
+        pros::delay(20);
+    }
+
+    // stop after action
+    intake.move(0);
+    score.move(0);
 }
 
 void autonomous() {
@@ -76,6 +104,8 @@ void autonomous() {
   chassis.drive_sensor_reset();            
   chassis.odom_xyt_set(0_in, 0_in, 0_deg); // Start odom at (0,0,0)
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD); // Hold brake for consistency
+  score.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+  
   // Run the selected auton from the selector
   ez::as::auton_selector.selected_auton_call();
 }
@@ -100,7 +130,6 @@ void ez_template_extras() {
   // If connected to field, you could disable tuner here if desired.
 }
 // true = we are keeping RED balls, ejecting BLUE
-const bool KEEP_RED = true;
 
 int color_sort_adjust(int manualPower) {
   // If you're not moving the intake, don't do anything
@@ -119,7 +148,7 @@ int color_sort_adjust(int manualPower) {
 
   // We only care when you're trying to take a ball IN (manualPower > 0)
   if (manualPower > 0) {
-    if (KEEP_RED) {
+    if (keepRed) {
       // We want RED. If we see BLUE, override to spit it out.
       if (isBlue) {
         return -127;  // Eject wrong color
@@ -127,7 +156,7 @@ int color_sort_adjust(int manualPower) {
     } else {
       // We want BLUE. If we see RED, override to spit it out.
       if (isRed) {
-        return 127;
+        return -127;
       }
     }
   }
@@ -137,7 +166,8 @@ int color_sort_adjust(int manualPower) {
 }
 
 void opcontrol() {
-  chassis.drive_brake_set(MOTOR_BRAKE_COAST);         
+  chassis.drive_brake_set(MOTOR_BRAKE_COAST);    
+  score.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);     
   chassis.opcontrol_joystick_practicemode_toggle(false);
 
   bool flipped = false;
@@ -145,70 +175,56 @@ void opcontrol() {
   while (true) {
     ez_template_extras();
 
-    // Toggle drive direction with LEFT button
+    // CHASSIS CONTROL
     if (master.get_digital_new_press(DIGITAL_LEFT)) {
       flipped = !flipped;
       pros::lcd::print(0, flipped ? "Drive: REVERSED" : "Drive: NORMAL");
     }
-
-    // =====================
-    // Tank drive with deadband + straight helper
-    // =====================
-
     int left  = master.get_analog(ANALOG_LEFT_Y);
     int right = master.get_analog(ANALOG_RIGHT_Y);
-
     left  = applyDeadband(left);
     right = applyDeadband(right);
+    left  = applyCurve(left);
+    right = applyCurve(right);
 
-    // Flip controls if reversed
     if (flipped) {
-      // swap sides and invert so controls feel natural when flipped
       int temp = left;
       left  = -right;
       right = -temp;
     }
-
-    if (std::abs(left - right) < 5) {   // Tolerance
+    if (std::abs(left - right) < 5) {  
       int avg = (left + right) / 2;
       left = avg;
       right = avg;
     }
-
     chassis.drive_set(left, right);
 
-      // 🤖 No ball close → normal driver controls
+    // INTAKE + SCORING CONTROL WITH COLOR SORTER
     int manualIntake = 0;
     int manualScore  = 0;
 
-    // Your normal controls decide what you WANT the intake to do
     if (master.get_digital(DIGITAL_RIGHT)) {
-      manualIntake = 127;    // intake forward
+      manualIntake = 127;    // eject
       manualScore  = -127;
     } 
     else if (master.get_digital(DIGITAL_Y)) {
-      manualIntake = 127;   // intake backward
+      manualIntake = 127;   // load intake
       manualScore  = 0;
     } 
     else if (master.get_digital(DIGITAL_R1)) {
-      manualIntake = 127;    // intake + score forward
+      manualIntake = 127;    // score long goal
       manualScore  = 127;
     }
     else if (master.get_digital(DIGITAL_R2)) {
-      manualIntake = -127;   // intake + score backward
+      manualIntake = -127;   // score bottom goal
       manualScore  = -127;
     }
 
-    // Let the color sorter MODIFY the intake only if wrong color is present
     int finalScore = color_sort_adjust(manualScore);
-
-
-    // DEBUG: rumble when sorter overrides your command
     if (finalScore != manualScore) {
       master.rumble(".");
     }
 
-    // Apply final powers
     intake.move(manualIntake);
     score.move(finalScore);
 
