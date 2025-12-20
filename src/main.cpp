@@ -16,7 +16,7 @@ int applyDeadband(int input) {
 int applyCurve(int input) {
   // input: -127..127
   double x = input / 127.0;          // -1..1
-  double a = 0.6;                    // curve strength (0 = straight, 1 = very curvy)
+  double a = 0.85;                    // curve strength (0 = straight, 1 = very curvy)
   double y = a * x * x * x + (1 - a) * x;  // cubic mix
 
   int out = static_cast<int>(y * 127.0);
