@@ -314,7 +314,7 @@ chassis.pid_drive_set(5_in, DRIVE_SPEED);
 intake.move(127);
 score.move(127);
 chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(78_deg, TURN_SPEED);
+chassis.pid_turn_set(77.5_deg, TURN_SPEED);
 chassis.pid_wait_quick_chain();
 intake.move(127);
 chassis.pid_drive_set(65_in, DRIVE_SPEED);
@@ -322,16 +322,18 @@ chassis.pid_wait_quick_chain();
 score.move(0);
 chassis.pid_drive_set(10_in, 50);
 chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-.5_in, 60);
+chassis.pid_drive_set(-.15_in, 50);
+
+
 
 chassis.pid_wait_quick_chain();
 chassis.pid_turn_set(315_deg, TURN_SPEED);
 chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(10_in, DRIVE_SPEED);
+chassis.pid_drive_set(12.5_in, DRIVE_SPEED);
 chassis.pid_wait_quick_chain();
 score_auto(-127,-127, 1250);
 intake.move(-127);
-chassis.pid_drive_set(-38.5_in, DRIVE_SPEED);
+chassis.pid_drive_set(-41_in, DRIVE_SPEED);
 pros::delay(500);
 dex.set(true);
 
@@ -339,7 +341,7 @@ chassis.pid_wait_quick_chain();
 chassis.pid_turn_set(180_deg, TURN_SPEED);
 chassis.pid_wait_quick_chain();
 intake.move(127);
-chassis.pid_drive_set(12.5_in, 75);
+chassis.pid_drive_set(12.25_in, 75);
 chassis.pid_wait_quick_chain();
 score_auto(127, 0, 700);
 intake.move(127);
