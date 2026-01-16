@@ -42,320 +42,109 @@ void default_constants() {
   chassis.slew_swing_constants_set(5_deg, 50);
 }
 
+///
+// Calculate the offsets of your tracking wheels
+///
+void measure_offsets() {
+  // Number of times to test
+  int iterations = 10;
 
-void fastredrightauton() {
-keepRed = true;
-chassis.pid_drive_set(5_in,DRIVE_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(340_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in,60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(135_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(22_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-dex.set(true);
-score_auto(127,127, 1250);
-chassis.drive_angle_set(180_deg);
-chassis.pid_drive_set(27_in, 75);
-chassis.pid_wait_quick_chain();
-score_auto(127, 0, 850);
-intake.move(127);
-chassis.pid_drive_set(-28_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127,127, 1500);
-dex.set(false);
-chassis.pid_drive_set(8_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-6_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-26_in,85);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(140_deg, 40);
-chassis.pid_wait_quick_chain();
+  // Our final offsets
+  double l_offset = 0.0, r_offset = 0.0, b_offset = 0.0, f_offset = 0.0;
+
+  // Reset all trackers if they exist
+  if (chassis.odom_tracker_left != nullptr) chassis.odom_tracker_left->reset();
+  if (chassis.odom_tracker_right != nullptr) chassis.odom_tracker_right->reset();
+  if (chassis.odom_tracker_back != nullptr) chassis.odom_tracker_back->reset();
+  if (chassis.odom_tracker_front != nullptr) chassis.odom_tracker_front->reset();
+  
+  for (int i = 0; i < iterations; i++) {
+    // Reset pid targets and get ready for running an auton
+    chassis.pid_targets_reset();
+    chassis.drive_imu_reset();
+    chassis.drive_sensor_reset();
+    chassis.drive_brake_set(MOTOR_BRAKE_HOLD);
+    chassis.odom_xyt_set(0_in, 0_in, 0_deg);
+    double imu_start = chassis.odom_theta_get();
+    double target = i % 2 == 0 ? 90 : 270;  // Switch the turn target every run from 270 to 90
+
+    // Turn to target at half power
+    chassis.pid_turn_set(target, 63, ez::raw);
+    chassis.pid_wait();
+    pros::delay(250);
+
+    // Calculate delta in angle
+    double t_delta = util::to_rad(fabs(util::wrap_angle(chassis.odom_theta_get() - imu_start)));
+
+    // Calculate delta in sensor values that exist
+    double l_delta = chassis.odom_tracker_left != nullptr ? chassis.odom_tracker_left->get() : 0.0;
+    double r_delta = chassis.odom_tracker_right != nullptr ? chassis.odom_tracker_right->get() : 0.0;
+    double b_delta = chassis.odom_tracker_back != nullptr ? chassis.odom_tracker_back->get() : 0.0;
+    double f_delta = chassis.odom_tracker_front != nullptr ? chassis.odom_tracker_front->get() : 0.0;
+
+    // Calculate the radius that the robot traveled
+    l_offset += l_delta / t_delta;
+    r_offset += r_delta / t_delta;
+    b_offset += b_delta / t_delta;
+    f_offset += f_delta / t_delta;
+  }
+
+  // Average all offsets
+  l_offset /= iterations;
+  r_offset /= iterations;
+  b_offset /= iterations;
+  f_offset /= iterations;
+
+  // Set new offsets to trackers that exist
+  if (chassis.odom_tracker_left != nullptr) chassis.odom_tracker_left->distance_to_center_set(l_offset);
+  if (chassis.odom_tracker_right != nullptr) chassis.odom_tracker_right->distance_to_center_set(r_offset);
+  if (chassis.odom_tracker_back != nullptr) chassis.odom_tracker_back->distance_to_center_set(b_offset);
+  if (chassis.odom_tracker_front != nullptr) chassis.odom_tracker_front->distance_to_center_set(f_offset);
 }
 
 
-void redleftauton() {
-keepRed = true;
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(20_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(270_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, 60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(225_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
+
+void odomtest() {
+chassis.pid_odom_set({{28.5_in, -5_in, 180_deg}, fwd, 110});
 dex.set(true);
-score_auto(127, 127, 1300);
-chassis.drive_angle_set(180_deg);
-chassis.pid_drive_set(27_in, 75);
 chassis.pid_wait_quick_chain();
-score_auto(127, 0, 800);
+chassis.pid_odom_set({{28.5_in, -16_in, 180_deg}, fwd, 110});
 intake.move(127);
-chassis.pid_drive_set(-28_in, DRIVE_SPEED);
+pros::delay(1800);
+intake.move(0);
 chassis.pid_wait_quick_chain();
-score_auto(127, 127, 1350);
-dex.set(false);
-chassis.pid_drive_set(8_in, DRIVE_SPEED);
+chassis.pid_odom_set({{29.25_in, 17.5_in, 180_deg}, rev, 110});
 chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(6_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(0_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(30_in, 80);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(50_deg, 40);
-chassis.pid_wait_quick_chain();
+hood.set(true);
+intake.move(127);
+pros::delay(1600);
+intake.move(0);
+
+}
+
+void redleftauton() {
+
 }
 
 void redsoloawp() {
-keepRed = true;
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(20_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(270_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, 60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(225_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127, 127, 1300);
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-intake.move(127);
-score.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(78_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-intake.move(127);
-chassis.pid_drive_set(65_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score.move(0);
-chassis.pid_drive_set(10_in, 50);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-.5_in, 60);
-
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(315_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(10_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(-127,-127, 1250);
-intake.move(-127);
-chassis.pid_drive_set(-38.5_in, DRIVE_SPEED);
-pros::delay(500);
-dex.set(true);
-
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-intake.move(127);
-chassis.pid_drive_set(12.5_in, 75);
-chassis.pid_wait_quick_chain();
-score_auto(127, 0, 700);
-intake.move(127);
-chassis.pid_drive_set(-27_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127,127, 2000);
 }
 
 void fastbluerightauton() {
-keepRed = false;
-chassis.pid_drive_set(5_in,DRIVE_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(340_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in,60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(135_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(22_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-dex.set(true);
-score_auto(127,127, 1250);
-chassis.drive_angle_set(180_deg);
-chassis.pid_drive_set(27_in, 75);
-chassis.pid_wait_quick_chain();
-score_auto(127, 0, 850);
-intake.move(127);
-chassis.pid_drive_set(-28_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127,127, 1500);
-dex.set(false);
-chassis.pid_drive_set(8_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-6_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-26_in,85);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(140_deg, 40);
-chassis.pid_wait_quick_chain();
+
 }
 
 void blueleftauton() {
-keepRed = false;
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(20_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(270_deg, TURN_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, 60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(225_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-dex.set(true);
-score_auto(127, 127, 1300);
-chassis.drive_angle_set(180_deg);
-chassis.pid_drive_set(27_in, 75);
-chassis.pid_wait_quick_chain();
-score_auto(127, 0, 800);
-intake.move(127);
-chassis.pid_drive_set(-28_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127, 127, 1350);
-dex.set(false);
-chassis.pid_drive_set(8_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(90_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(6_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(0_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(30_in, 80);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(50_deg, 40);
-chassis.pid_wait_quick_chain();
+
 }
 
 void bluesoloawp() {
-keepRed = false;
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-intake.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(20_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(11.4_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(270_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, 60);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(225_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(20_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-9_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127, 127, 1300);
-chassis.pid_drive_set(5_in, DRIVE_SPEED);
-intake.move(127);
-score.move(127);
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(77.5_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-intake.move(127);
-chassis.pid_drive_set(65_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score.move(0);
-chassis.pid_drive_set(10_in, 50);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(-.15_in, 50);
 
-
-
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(315_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-chassis.pid_drive_set(12.5_in, DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(-127,-127, 1250);
-intake.move(-127);
-chassis.pid_drive_set(-41_in, DRIVE_SPEED);
-pros::delay(500);
-dex.set(true);
-
-chassis.pid_wait_quick_chain();
-chassis.pid_turn_set(180_deg, TURN_SPEED);
-chassis.pid_wait_quick_chain();
-intake.move(127);
-chassis.pid_drive_set(12.25_in, 75);
-chassis.pid_wait_quick_chain();
-score_auto(127, 0, 700);
-intake.move(127);
-chassis.pid_drive_set(-27_in,DRIVE_SPEED);
-chassis.pid_wait_quick_chain();
-score_auto(127,127, 2000);
 }
 
 void bluerightauton() {
-keepRed = false;
  
 }
 void redrightauton() {
-keepRed = true;
 }
 
 

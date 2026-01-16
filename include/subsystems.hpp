@@ -3,15 +3,17 @@
 #include "EZ-Template/api.hpp"
 #include "api.h"
 
-extern bool keepRed;
-int color_sort_adjust(int manualPower);
+
 extern Drive chassis;
-void score_auto(int intakePower, int scorePower, int timeMs);
 
-inline pros::MotorGroup intake({-10, 3});
-inline pros::MotorGroup score({8});
-extern pros::Optical optical;
+inline pros::Distance distFront(12);
+inline pros::Distance distRight(20);
+inline pros::Distance distBack(19);
+inline pros::Distance distLeft(11);
 
-inline ez::Piston descore('A');
-inline ez::Piston dex('C');
-inline ez::Piston middle('D');
+inline pros::MotorGroup intake({7, -5});
+
+inline ez::Piston goal('C');
+inline ez::Piston dex('H');
+inline ez::Piston hood('A');
+inline ez::Piston wing('D');
