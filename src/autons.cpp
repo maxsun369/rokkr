@@ -1,4 +1,211 @@
 #include "main.h"
+#include <cmath>
+
+// ---------- Helpers ----------
+constexpr double FIELD_MIN = 0.0;
+constexpr double FIELD_MAX = 144.0; // inches (12 ft field)
+
+inline double deg_to_rad(double d) { return d * M_PI / 180.0; }
+inline double mm_to_in(double mm) { return mm / 25.4; }
+
+double read_dist_in(pros::Distance& d) {
+  double mm = d.get();          // PROS Distance is mm
+  if (mm <= 0) return -1;       // invalid
+  return mm_to_in(mm);
+}
+
+// Ray from (ox,oy) along unit vector (vx,vy) to field walls; returns inches
+double ray_to_field(double ox, double oy, double vx, double vy) {
+  const double EPS = 1e-6;
+  double best = 1e9;
+
+  if (std::abs(vx) > EPS) {
+    double t = (FIELD_MIN - ox) / vx;
+    double y = oy + t * vy;
+    if (t > 0 && y >= FIELD_MIN && y <= FIELD_MAX) best = std::min(best, t);
+
+    t = (FIELD_MAX - ox) / vx;
+    y = oy + t * vy;
+    if (t > 0 && y >= FIELD_MIN && y <= FIELD_MAX) best = std::min(best, t);
+  }
+  if (std::abs(vy) > EPS) {
+    double t = (FIELD_MIN - oy) / vy;
+    double x = ox + t * vx;
+    if (t > 0 && x >= FIELD_MIN && x <= FIELD_MAX) best = std::min(best, t);
+
+    t = (FIELD_MAX - oy) / vy;
+    x = ox + t * vx;
+    if (t > 0 && x >= FIELD_MIN && x <= FIELD_MAX) best = std::min(best, t);
+  }
+
+  if (best > 1e8) return -1;
+  return best;
+}
+
+// ---------- Sensor model ----------
+struct DistModel {
+  pros::Distance* s;
+  const char* name;
+  double dx;      // inches: +forward
+  double dy;      // inches: +right
+  double dir_deg; // 0=front, 90=right, 180=back, 270=left
+};
+
+// YOUR INITIAL GUESSES (edit these)
+DistModel F{&distFront, "Front",  5.0,  0.0,   0.0};
+DistModel R{&distRight, "Right",  0.0,  5.0,  90.0};
+DistModel B{&distBack,  "Back",  -5.0,  0.0, 180.0};
+DistModel L{&distLeft,  "Left",   0.0, -5.0, 270.0};
+
+DistModel* allS[] = {&F, &R, &B, &L};
+
+// Predict distance for a sensor using current odom pose
+double predict_dist_in(const DistModel& m, double x, double y, double th_deg) {
+  double th = deg_to_rad(th_deg);
+
+  // Sensor global position
+  double sx = x + (m.dx * std::sin(th) + m.dy * std::cos(th));
+  double sy = y + (m.dx * std::cos(th) - m.dy * std::sin(th));
+
+  // Sensor global direction
+  double gdeg = th_deg + m.dir_deg;
+  double gr = deg_to_rad(gdeg);
+
+  // EZ convention: 0deg faces +Y, so unit vector is (sin, cos)
+  double vx = std::sin(gr);
+  double vy = std::cos(gr);
+
+  return ray_to_field(sx, sy, vx, vy);
+}
+
+// Average multiple readings to reduce noise
+double avg_read_in(pros::Distance& d, int samples = 25, int delay_ms = 10) {
+  double sum = 0;
+  int cnt = 0;
+  for (int i = 0; i < samples; i++) {
+    double v = read_dist_in(d);
+    if (v > 0) { sum += v; cnt++; }
+    pros::delay(delay_ms);
+  }
+  if (cnt == 0) return -1;
+  return sum / cnt;
+}
+
+// ---------- "Distance Calibrate" routine ----------
+// Put this in your autons.cpp (or any .cpp that can access distFront/distRight/distBack/distLeft and master).
+// Then add it to your auton selector like: {"DIST CALIBRATE", distance_calibrate},
+
+void distance_calibrate() {
+  // ====== SETTINGS YOU CAN CHANGE ======
+  const double TRUE_DIST_IN = 12.0;   // Use a ruler/tape: place each sensor exactly this far from a wall
+  const int SAMPLES = 25;             // More = smoother average
+  const int SAMPLE_DELAY_MS = 15;
+
+  // ====== helpers (kept inside this function so you can paste easily) ======
+  auto mm_to_in = [](double mm) -> double { return mm / 25.4; };
+
+  auto read_avg_in = [&](pros::Distance &d) -> double {
+    double sum = 0.0;
+    int good = 0;
+    for (int i = 0; i < SAMPLES; i++) {
+      // PROS Distance sensor "get()" returns mm
+      double mm = d.get();
+      // basic validity check (tweak if needed)
+      if (mm > 10 && mm < 4000) {
+        sum += mm_to_in(mm);
+        good++;
+      }
+      pros::delay(SAMPLE_DELAY_MS);
+    }
+    if (good == 0) return -1.0;
+    return sum / good;
+  };
+
+  auto lcd_clear_all = []() {
+    for (int i = 0; i < 8; i++) pros::lcd::clear_line(i);
+  };
+
+  auto wait_release = [&]() {
+    // prevent double-press
+    while (master.get_digital(pros::E_CONTROLLER_DIGITAL_A) ||
+           master.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+      pros::delay(10);
+    }
+  };
+
+  auto prompt_and_capture = [&](const char *name, pros::Distance &sensor) -> double {
+    while (true) {
+      lcd_clear_all();
+      pros::lcd::print(0, "DIST CAL: %s", name);
+      pros::lcd::print(1, "Put %0.1fin from wall", TRUE_DIST_IN);
+      pros::lcd::print(2, "A=sample  B=skip");
+
+      // live reading
+      double live_in = mm_to_in(sensor.get());
+      pros::lcd::print(4, "Live: %0.2f in", live_in);
+
+      if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+        wait_release();
+        double avg_in = read_avg_in(sensor);
+        lcd_clear_all();
+        pros::lcd::print(0, "%s sampled", name);
+        if (avg_in < 0) {
+          pros::lcd::print(1, "No valid readings");
+          pros::lcd::print(2, "Check wiring/port");
+          pros::delay(1200);
+          return 0.0; // fallback offset
+        } else {
+          double offset_in = avg_in - TRUE_DIST_IN; // measured - true
+          pros::lcd::print(1, "Avg: %0.2f in", avg_in);
+          pros::lcd::print(2, "Offset: %0.2f in", offset_in);
+          pros::lcd::print(3, "(meas - true)");
+          pros::delay(1200);
+          return offset_in;
+        }
+      }
+
+      if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
+        wait_release();
+        lcd_clear_all();
+        pros::lcd::print(0, "%s skipped", name);
+        pros::delay(600);
+        return 0.0; // skip => no correction
+      }
+
+      pros::delay(20);
+    }
+  };
+
+  // ====== IMPORTANT ======
+  // You must have PROS LCD initialized somewhere (usually in initialize()).
+  // If not already, add: pros::lcd::initialize();
+
+  // stop drivetrain while calibrating
+  chassis.drive_set(0, 0);
+
+  // ====== CALIBRATION ======
+  double offF = prompt_and_capture("FRONT", distFront);
+  double offR = prompt_and_capture("RIGHT", distRight);
+  double offB = prompt_and_capture("BACK",  distBack);
+  double offL = prompt_and_capture("LEFT",  distLeft);
+
+  // ====== RESULTS ======
+  lcd_clear_all();
+  pros::lcd::print(0, "DIST OFFSETS (in)");
+  pros::lcd::print(1, "F:%0.2f  R:%0.2f", offF, offR);
+  pros::lcd::print(2, "B:%0.2f  L:%0.2f", offB, offL);
+
+  pros::lcd::print(4, "Use as: corrected =");
+  pros::lcd::print(5, "measured_in - offset");
+
+  // Keep showing until you exit auton / switch
+  while (true) {
+    pros::delay(50);
+  }
+}
+
+
+
 const int DRIVE_SPEED = 127;
 const int TURN_SPEED = 100;
 const int SWING_SPEED = 100;
